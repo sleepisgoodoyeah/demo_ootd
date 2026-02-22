@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Styling Activity Demo - Mobile Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        :root {
+            --primary: #FF4D4F;
+            --secondary: #FF8500;
+            --bg: #F5F5F7;
+        }
+
+        /* 桌面端居中容器 */
+        body {
+            background-color: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* 内容容器（无手机外壳） */
+        .phone-container {
+            width: 375px;
+            height: 812px;
+            background: var(--bg);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部刘海已移除 */
+        .phone-notch {
+            display: none;
+        }
+
+        /* 状态栏模拟 */
+        .status-bar {
+            height: 44px;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 999;
+            background: transparent;
+        }
+
+        /* 滚动区域控制 */
+        .screen-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 隐藏滚动条 */
+        .screen-content::-webkit-scrollbar { display: none; }
+
+        /* 页面基础样式 */
+        .page { display: none; min-height: 100%; width: 100%; }
+        .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+        /* 导航栏和弹窗相对于手机定位 */
+        .tab-bar {
+            position: absolute; /* 改为相对于手机容器 */
+            bottom: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            padding: 10px 0 24px 0;
+            border-top: 0.5px solid #ddd;
+            z-index: 50;
+        }
+
+        .modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            display: none;
+            justify-content: flex-end;
+            flex-direction: column;
+        }
+
+        .btn-gradient { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 25px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    </style>
+</head>
+<body>
+
+    <!-- 手机外壳开始 -->
+    <div class="phone-container">
+        <div class="phone-notch"></div>
+        
+        <!-- 模拟状态栏 -->
+        <div class="status-bar">
+            <span>9:41</span>
+            <div class="flex space-x-1">
+                <span>📶</span><span>🔋</span>
+            </div>
+        </div>
+
+        <!-- 屏幕内容区域 -->
+        <div class="screen-content">
+            
+            <!-- 1. 活动落地页 -->
+            <section id="page-landing" class="page active">
+                <div class="h-40 bg-gray-200 relative overflow-hidden">
+                    <img src="source/首页背景.jpg" class="w-full h-full object-cover object-[center_38%]">
+                </div>
+                <div class="p-4 pt-3">
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="font-bold text-gray-800">Popular Challenge Themes</h2>
+                        <span class="text-xs text-red-500 italic">24k Joined</span>
+                    </div>
+                    <div id="theme-list" class="space-y-4">
+                        <!-- JS 渲染主题卡片 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. 搭配编辑器页 -->
+            <section id="page-editor" class="page">
+                <div class="p-4 flex items-center bg-white sticky top-0 z-10 shadow-sm">
+                    <button onclick="navigateTo('page-landing')" class="text-xl">‹</button>
+                    <h2 id="current-theme-title" class="flex-1 text-center font-bold text-sm">Customize Outfit</h2>
+                    <div class="w-6"></div>
+                </div>
+                <div class="p-4">
+                    <div id="category-list" class="space-y-3">
+                        <!-- 渲染类别卡片 -->
+                    </div>
+                    <button id="btn-submit" class="w-full btn-gradient py-4 mt-8 font-bold opacity-50 pointer-events-none shadow-lg">
+                        Generate AI Report
+                    </button>
+                </div>
+            </section>
+
+            <!-- 4. 结果页 -->
+            <section id="page-result" class="page bg-white">
+                <div class="p-6">
+                    <div class="flex flex-col items-center justify-center text-center mb-4">
+                        <div id="ai-score" class="text-7xl font-black text-orange-500 mb-1 mt-4">0</div>
+                        <div class="text-sm font-bold text-gray-800">Fashion Master Rank</div>
+                    </div>
+                    <p id="ai-comment" class="text-sm text-gray-500 px-4 leading-relaxed text-center">“...”</p>
+                    
+                    <!-- 奖励模块：优惠券 + 3 个限时折扣商品 -->
+                    <div class="my-6 p-4 bg-amber-50 rounded-2xl text-left border border-amber-100">
+                        <h3 class="text-sm font-bold text-amber-800 mb-2 text-center">You win exclusive offer</h3>
+                        <p class="text-xs font-bold text-gray-700 mb-3">You got 10% off voucher based on your high performance! Get them now!</p>
+                        <div class="flex gap-2 items-stretch">
+                            <div class="w-20 h-20 rounded-lg bg-orange-500 flex-shrink-0 flex flex-col items-center justify-center text-white font-black">
+                                <span class="text-2xl leading-tight">10%</span>
+                                <span class="text-sm leading-tight">Off</span>
+                            </div>
+                            <div id="reward-products" class="flex gap-2 flex-1 min-w-0">
+                                <!-- JS 填充 3 个商品 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OOTD 穿搭组合图 callout：样式对齐上方奖励模块 -->
+                    <div class="my-6 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                        <h3 class="text-sm font-bold text-amber-800 mb-3 text-center">Share Your OOTD</h3>
+                        <div class="flex gap-4 items-stretch">
+                            <img id="ootd-combined-img" src="source/组合1.png" alt="OOTD" class="w-32 h-40 rounded-xl object-cover flex-shrink-0">
+                            <div class="flex-1 flex flex-col justify-center gap-3 min-w-0">
+                                <button onclick="saveOotdToLocal()" class="w-full min-h-[44px] py-2.5 px-2 bg-amber-100 hover:bg-amber-200 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-center text-center break-words leading-tight">Save to my album</button>
+                                <button onclick="shareToSquare()" class="w-full min-h-[44px] py-2.5 px-2 btn-gradient text-xs font-bold flex items-center justify-center text-center break-words leading-tight">Share to Square</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="navigateTo('page-landing')" class="w-full py-2 text-gray-400 text-xs text-center">Back to Home</button>
+                </div>
+            </section>
+
+            <!-- 5. 广场 -->
+            <section id="page-square" class="page">
+                <div class="bg-white p-4 sticky top-0 z-10 border-b">
+                    <div class="flex justify-around text-sm">
+                        <button class="font-bold text-red-500 border-b-2 border-red-500 pb-2">Inspiration Square</button>
+                        <button onclick="navigateTo('page-leaderboard')" class="text-gray-400">Top Creators</button>
+                    </div>
+                </div>
+                <div id="square-feed" class="p-3 grid grid-cols-2 gap-3"></div>
+            </section>
+
+            <!-- 6. 排行榜 -->
+            <section id="page-leaderboard" class="page bg-gray-50">
+                <div class="p-4 flex items-center bg-white border-b sticky top-0 z-10">
+                    <button onclick="navigateTo('page-square')" class="mr-2">‹</button>
+                    <h2 class="font-bold text-sm">Most Popular Outfits This Week</h2>
+                </div>
+                <div id="rank-list" class="p-3 space-y-2"></div>
+            </section>
+
+            <!-- 7. 商品推荐列表页 -->
+            <section id="page-recommend" class="page bg-gray-50">
+                <div class="p-4 flex items-center bg-white border-b sticky top-0 z-10">
+                    <button onclick="navigateTo('page-editor')" class="mr-2">‹</button>
+                    <h2 id="recommend-title" class="font-bold text-sm flex-1">Product Recommendations</h2>
+                </div>
+                <div id="recommend-grid" class="p-4 grid grid-cols-2 gap-4"></div>
+            </section>
+
+        </div> <!-- Screen Content End -->
+
+        <!-- 底部导航 -->
+        <nav class="tab-bar">
+            <div class="flex-1 text-center" onclick="navigateTo('page-landing')">
+                <span class="block text-xl">🏠</span>
+                <span class="text-[10px] text-gray-500">Activity</span>
+            </div>
+            <div class="flex-1 text-center" onclick="navigateTo('page-square')">
+                <span class="block text-xl">🎨</span>
+                <span class="text-[10px] text-gray-500">Square</span>
+            </div>
+        </nav>
+
+        <!-- 商品选择弹窗 (定位在 phone-container 内) -->
+        <div id="modal-picker" class="modal">
+            <div class="bg-white rounded-t-3xl p-5 animate__animated animate__slideInUp">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 id="picker-title" class="font-bold">Select Item</h3>
+                    <button onclick="closePicker()" class="text-gray-300 text-2xl">&times;</button>
+                </div>
+                <div id="picker-subtitle" class="text-xs text-gray-500 mb-4">Select any item</div>
+                <div id="product-grid" class="grid grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pb-4"></div>
+                <button id="btn-shop-more" onclick="goToRecommend()" class="w-full btn-gradient py-3 mt-4 font-bold shadow-lg">
+                    Shop More
+                </button>
+            </div>
+        </div>
+
+        <!-- 灵感广场商品抽屉：一行一个商品（图片、名称、价格、购买） -->
+        <div id="modal-square-drawer" class="modal">
+            <div class="bg-white rounded-t-3xl p-5 animate__animated animate__slideInUp max-h-[85vh] flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">Outfit Details</h3>
+                    <button onclick="closeSquareDrawer()" class="text-gray-300 text-2xl">&times;</button>
+                </div>
+                <div id="square-drawer-list" class="overflow-y-auto pb-4 space-y-3 flex-1">
+                    <!-- JS 填充：每行一个商品 -->
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- Phone Container End -->
+
+    <script>
+        // --- 数据配置 ---
+        const THEMES = [
+            { id: 1, title: 'Urban Minimalism', img: 'source/urban minimalism.webp', categories: ['Outerwear', 'Innerwear', 'Pants'] },
+            { id: 2, title: 'High-Performance Gaming Room', img: 'source/High-Performance Gaming Room.jpeg', categories: ['Keyboard & Mouse', 'Monitor', 'Ambient Light'] },
+            { id: 3, title: 'Early Autumn Camping', img: 'source/Early Autumn Camping.jpeg', categories: ['Tent', 'Folding Chair', 'Camping Light'] }
+        ];
+
+        const PRODUCTS = {
+            'Outerwear': [
+                { name: 'Oversized Suit', price: 899, img: 'source/上衣1.jpg' },
+                { name: 'Trench Coat', price: 1299, img: 'source/上衣2.jpg' },
+                { name: 'Wool Coat', price: 1599, img: 'source/上衣3.jpg' },
+                { name: 'Denim Jacket', price: 599, img: 'source/上衣4.jpg' },
+                { name: 'Knit Cardigan', price: 449, img: 'source/上衣5.jpg' },
+                { name: 'Leather Jacket', price: 1899, img: 'source/上衣6.jpg' },
+                { name: 'Down Jacket', price: 1299, img: 'source/上衣1.jpg' },
+                { name: 'Workwear Jacket', price: 699, img: 'source/上衣2.jpg' }
+            ],
+            'Innerwear': [
+                { name: 'Cotton White T-Shirt', price: 199, img: 'source/上衣1.jpg' },
+                { name: 'Cashmere Sweater', price: 499, img: 'source/上衣2.jpg' },
+                { name: 'Striped Shirt', price: 299, img: 'source/上衣3.jpg' },
+                { name: 'Turtleneck Sweater', price: 399, img: 'source/上衣4.jpg' },
+                { name: 'Polo Shirt', price: 249, img: 'source/上衣5.jpg' },
+                { name: 'Knit Vest', price: 179, img: 'source/配饰1.jpg' },
+                { name: 'Long Sleeve T-Shirt', price: 159, img: 'source/上衣6.jpg' },
+                { name: 'Hoodie', price: 329, img: 'source/上衣1.jpg' }
+            ],
+            'Pants': [
+                { name: 'Straight Leg Jeans', price: 399, img: 'source/下衣1.jpg' },
+                { name: 'Draped Wide Leg Pants', price: 350, img: 'source/下衣2.jpg' },
+                { name: 'Casual Dress Pants', price: 499, img: 'source/下衣3.jpg' },
+                { name: 'Sport Pants', price: 299, img: 'source/下衣4.jpg' },
+                { name: 'Cargo Pants', price: 449, img: 'source/下衣5.jpg' },
+                { name: 'Cropped Pants', price: 379, img: 'source/下衣6.jpg' },
+                { name: 'Tapered Pants', price: 329, img: 'source/下衣7.jpg' },
+                { name: 'Khaki Pants', price: 429, img: 'source/下衣1.jpg' }
+            ]
+        };
+
+        // 用户订单历史数据（过去30天）
+        const USER_ORDERS = [
+            { product: { name: 'Oversized Suit', price: 899, img: 'source/上衣1.jpg', category: 'Outerwear' }, orderDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }, // 5天前
+            { product: { name: 'Cotton White T-Shirt', price: 199, img: 'source/上衣1.jpg', category: 'Innerwear' }, orderDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) }, // 8天前
+            { product: { name: 'Straight Leg Jeans', price: 399, img: 'source/下衣1.jpg', category: 'Pants' }, orderDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) }, // 12天前
+            { product: { name: 'Cashmere Sweater', price: 499, img: 'source/上衣2.jpg', category: 'Innerwear' }, orderDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) }, // 15天前
+            { product: { name: 'Trench Coat', price: 1299, img: 'source/上衣2.jpg', category: 'Outerwear' }, orderDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000) }, // 20天前
+            { product: { name: 'Draped Wide Leg Pants', price: 350, img: 'source/下衣2.jpg', category: 'Pants' }, orderDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000) } // 25天前
+        ];
+
+        // 获取用户指定类别和时间范围内的订单商品
+        function getUserOrdersByCategory(category, days = 30) {
+            const now = new Date();
+            const daysAgo = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+            
+            return USER_ORDERS
+                .filter(order => {
+                    return order.product.category === category && order.orderDate >= daysAgo;
+                })
+                .map(order => order.product);
+        }
+
+        const MOCK_SQUARE = [
+            { user: 'Kira', score: 95, likes: 421, img: 'source/组合1.png' },
+            { user: 'Xiaobei', score: 88, likes: 312, img: 'source/组合2.jpg' },
+            { user: 'Luna', score: 92, likes: 286, img: 'source/组合3.jpg' },
+            { user: 'Mia', score: 85, likes: 198, img: 'source/组合1.png' },
+            { user: 'Nora', score: 90, likes: 245, img: 'source/组合2.jpg' },
+            { user: 'Zoe', score: 87, likes: 176, img: 'source/组合3.jpg' }
+        ];
+
+        // 组合图 → 商品：组合1→上衣1+下衣1，组合2→上衣2+下衣2，依次类推（索引 0-based）
+        function getComboProducts(comboImgPath) {
+            const match = (comboImgPath || '').match(/组合(\d+)/);
+            const index = match ? parseInt(match[1], 10) - 1 : 0;
+            const i = Math.max(0, Math.min(index, 7));
+            return [
+                { ...PRODUCTS['Outerwear'][i], category: 'Outerwear' },
+                { ...PRODUCTS['Pants'][i], category: 'Pants' }
+            ];
+        }
+
+        // 结果页奖励模块：优惠券图 + 3 个限时折扣商品（原价 + 现价）
+        const COUPON_IMG = 'source/配饰1.jpg';
+        const REWARD_PRODUCTS = [
+            { name: 'Oversized Suit', originalPrice: 899, price: 719, img: 'source/上衣1.jpg' },
+            { name: 'Striped Shirt', originalPrice: 299, price: 239, img: 'source/上衣3.jpg' },
+            { name: 'Straight Leg Jeans', originalPrice: 399, price: 319, img: 'source/下衣1.jpg' }
+        ];
+
+        let state = { currentTheme: null, selections: {}, currentCategory: null };
+        let resultOotdImage = 'source/组合1.png';
+
+        // --- 核心逻辑 ---
+        function navigateTo(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if(pageId === 'page-square') renderSquare();
+            if(pageId === 'page-leaderboard') renderLeaderboard();
+            if(pageId === 'page-recommend') renderRecommendPage();
+        }
+
+        function init() {
+            const list = document.getElementById('theme-list');
+            THEMES.forEach(t => {
+                const card = document.createElement('div');
+                card.className = 'card overflow-hidden flex h-24 items-center';
+                card.innerHTML = `
+                    <img src="${t.img}" class="w-24 h-full object-cover">
+                    <div class="p-4 flex-1">
+                        <div class="font-bold text-sm">${t.title}</div>
+                        <div class="text-[10px] text-gray-400">Contains ${t.categories.length} categories</div>
+                    </div>
+                    <button class="mr-4 text-xs font-bold text-red-500">Challenge</button>
+                `;
+                card.onclick = () => {
+                    state.currentTheme = t;
+                    state.selections = {};
+                    document.getElementById('current-theme-title').innerText = t.title;
+                    renderEditor();
+                    navigateTo('page-editor');
+                };
+                list.appendChild(card);
+            });
+        }
+
+        function renderEditor() {
+            const container = document.getElementById('category-list');
+            container.innerHTML = '';
+            state.currentTheme.categories.forEach(cat => {
+                const item = state.selections[cat];
+                const card = document.createElement('div');
+                card.className = `card p-3 flex justify-between items-center border-2 ${item ? 'border-red-400' : 'border-transparent'}`;
+                card.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center mr-3 overflow-hidden">
+                            ${item ? `<img src="${item.img}" class="w-full h-full object-cover">` : '<span class="text-lg">＋</span>'}
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold">${cat}</div>
+                            <div class="text-[10px] text-gray-400">${item ? item.name : 'Not Selected'}</div>
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => openPicker(cat);
+                container.appendChild(card);
+            });
+
+            const isDone = Object.keys(state.selections).length === state.currentTheme.categories.length;
+            const btn = document.getElementById('btn-submit');
+            btn.className = `w-full btn-gradient py-4 mt-8 font-bold shadow-lg ${isDone ? 'opacity-100' : 'opacity-50 pointer-events-none'}`;
+            btn.onclick = showResult;
+        }
+
+        function openPicker(cat) {
+            state.currentCategory = cat;
+            document.getElementById('picker-title').innerText = `Choose Your ${cat}`;
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = '';
+            
+            const allProducts = Object.values(PRODUCTS).flat();
+            const purchasedNames = new Set(USER_ORDERS.map(o => o.product.name));
+            const historyPurchased = allProducts.filter(p => purchasedNames.has(p.name));
+            const inCartOrLikes = allProducts.filter(p => !purchasedNames.has(p.name));
+            // 均匀分到两组：若已购/未购数量悬殊，则按一半一半拆分展示
+            const half = Math.ceil(allProducts.length / 2);
+            const section1 = historyPurchased.length > 0 && inCartOrLikes.length > 0
+                ? historyPurchased
+                : allProducts.slice(0, half);
+            const section2 = historyPurchased.length > 0 && inCartOrLikes.length > 0
+                ? inCartOrLikes
+                : allProducts.slice(half);
+
+            function appendSection(title, products) {
+                if (products.length === 0) return;
+                const titleEl = document.createElement('div');
+                titleEl.className = 'col-span-2 py-2 px-3 bg-gray-200 rounded-lg text-xs font-bold text-gray-600 mt-2 first:mt-0';
+                titleEl.textContent = title;
+                grid.appendChild(titleEl);
+                products.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'card p-2 text-center text-[10px]';
+                    item.innerHTML = `
+                        <img src="${p.img}" class="w-full aspect-square object-cover rounded mb-2">
+                        <div class="font-bold truncate">${p.name}</div>
+                        <div class="text-red-500 mt-1">¥${p.price}</div>
+                    `;
+                    item.onclick = (e) => {
+                        e.stopPropagation();
+                        state.selections[cat] = p;
+                        closePicker();
+                        renderEditor();
+                    };
+                    grid.appendChild(item);
+                });
+            }
+            appendSection('History purchased', section1);
+            appendSection('In cart or likes', section2);
+            
+            document.getElementById('modal-picker').style.display = 'flex';
+        }
+
+        function closePicker() { document.getElementById('modal-picker').style.display = 'none'; }
+
+        function showResult() {
+            const score = 80 + Math.floor(Math.random() * 20);
+            navigateTo('page-result');
+            animateValue("ai-score", 0, score, 1000);
+            document.getElementById('ai-comment').innerText = "This outfit achieves perfect color balance. AI detected its uniqueness exceeds 92% of users, perfectly matching this year's minimalist trend.";
+            
+            // 奖励模块：10% Off 标识 + 3 个限时折扣商品（原价 + 现价）
+            const rewardEl = document.getElementById('reward-products');
+            rewardEl.innerHTML = '';
+            REWARD_PRODUCTS.forEach(p => {
+                rewardEl.innerHTML += `
+                    <div class="flex-1 min-w-0 rounded-lg overflow-hidden bg-white border border-gray-200">
+                        <img src="${p.img}" class="w-full aspect-square object-cover">
+                        <div class="p-1.5 text-center">
+                            <div class="text-red-500 text-xs font-bold">¥${p.price}</div>
+                            <div class="text-[10px] text-gray-400 line-through">¥${p.originalPrice}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // OOTD 穿搭组合图：使用本地组合图或首件选中单品图
+            resultOotdImage = Object.keys(state.selections).length > 0 ? 'source/组合1.png' : 'source/组合1.png';
+            document.getElementById('ootd-combined-img').src = resultOotdImage;
+        }
+
+        function animateValue(id, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                document.getElementById(id).innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function saveOotdToLocal() {
+            const img = document.getElementById('ootd-combined-img');
+            const url = img.src;
+            const filename = url.includes('.png') ? 'my-ootd.png' : 'my-ootd.jpg';
+            fetch(url).then(r => r.blob()).then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }).catch(() => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+            });
+        }
+
+        function shareToSquare() {
+            MOCK_SQUARE.unshift({
+                user: 'Me',
+                score: document.getElementById('ai-score').innerText,
+                likes: 0,
+                img: resultOotdImage
+            });
+            navigateTo('page-square');
+        }
+
+        function openSquareDrawer(squareItem) {
+            const products = getComboProducts(squareItem.img);
+            const listEl = document.getElementById('square-drawer-list');
+            listEl.innerHTML = '';
+            products.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100';
+                row.innerHTML = `
+                    <img src="${p.img}" class="w-16 h-16 rounded-lg object-cover flex-shrink-0" alt="">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-bold text-gray-800 truncate">${p.name}</div>
+                        <div class="text-red-500 text-sm font-bold mt-0.5">¥${p.price}</div>
+                    </div>
+                `;
+                const btn = document.createElement('button');
+                btn.className = 'btn-gradient py-2 px-4 text-xs font-bold rounded-xl flex-shrink-0';
+                btn.textContent = 'Purchase';
+                btn.onclick = () => {
+                    purchaseProduct(p.name, p.price, p.category);
+                    closeSquareDrawer();
+                };
+                row.appendChild(btn);
+                listEl.appendChild(row);
+            });
+            document.getElementById('modal-square-drawer').style.display = 'flex';
+        }
+
+        function closeSquareDrawer() {
+            document.getElementById('modal-square-drawer').style.display = 'none';
+        }
+
+        function renderSquare() {
+            const feed = document.getElementById('square-feed');
+            feed.innerHTML = '';
+            MOCK_SQUARE.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card overflow-hidden cursor-pointer';
+                card.innerHTML = `
+                    <div class="relative">
+                        <img src="${item.img}" class="w-full aspect-[4/5] object-cover">
+                        <div class="absolute bottom-2 left-2 bg-black/40 backdrop-blur-md text-white text-[9px] px-2 py-0.5 rounded-full">AI ${item.score}</div>
+                    </div>
+                    <div class="p-2 flex justify-between items-center text-[10px]">
+                        <span class="font-bold">${item.user}</span>
+                        <span onclick="event.stopPropagation(); this.innerText = '❤️ ' + (parseInt(this.innerText.split(' ')[1])+1)">❤️ ${item.likes}</span>
+                    </div>
+                `;
+                card.onclick = () => openSquareDrawer(item);
+                feed.appendChild(card);
+            });
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('rank-list');
+            list.innerHTML = '';
+            [...MOCK_SQUARE].sort((a,b)=>b.likes-a.likes).forEach((item, i) => {
+                list.innerHTML += `
+                    <div class="card p-3 flex items-center">
+                        <span class="w-6 font-black ${i<3?'text-orange-500':'text-gray-300'}">${i+1}</span>
+                        <img src="${item.img}" class="w-10 h-10 rounded-full object-cover mx-3">
+                        <span class="flex-1 text-xs font-bold">${item.user}</span>
+                        <span class="text-[10px] text-gray-400">${item.likes} Likes</span>
+                    </div>
+                `;
+            });
+        }
+
+        function goToRecommend() {
+            closePicker();
+            if (state.currentCategory) {
+                navigateTo('page-recommend');
+            }
+        }
+
+        function renderRecommendPage() {
+            if (!state.currentCategory) return;
+            
+            const title = document.getElementById('recommend-title');
+            title.innerText = `${state.currentCategory} Recommendations`;
+            
+            const grid = document.getElementById('recommend-grid');
+            grid.innerHTML = '';
+            
+            const products = PRODUCTS[state.currentCategory] || PRODUCTS['Outerwear'];
+            
+            products.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'card p-3 text-center';
+                item.innerHTML = `
+                    <img src="${p.img}" class="w-full aspect-square object-cover rounded-lg mb-3">
+                    <div class="text-xs font-bold mb-1 truncate">${p.name}</div>
+                    <div class="text-red-500 text-sm font-bold mb-3">¥${p.price}</div>
+                    <button onclick="purchaseProduct('${p.name}', ${p.price}, '${state.currentCategory}')" class="w-full btn-gradient py-2 text-xs font-bold">
+                        Order Now
+                    </button>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function purchaseProduct(name, price, category) {
+            // 模拟下单：添加到订单历史
+            const newOrder = {
+                product: {
+                    name: name,
+                    price: price,
+                    img: PRODUCTS[category].find(p => p.name === name)?.img || '',
+                    category: category
+                },
+                orderDate: new Date()
+            };
+            USER_ORDERS.unshift(newOrder);
+            
+            // 显示提示
+            alert(`Order Placed Successfully: ${name}\n¥${price}`);
+            
+            // 返回编辑器页面
+            navigateTo('page-editor');
+        }
+
+        init();
+    </script>
+</body>
+</html>
