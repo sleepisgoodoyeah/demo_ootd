@@ -165,12 +165,12 @@
                 <div class="h-40 bg-gray-200 relative overflow-hidden">
                     <img src="source/首页背景.jpg" class="w-full h-full object-cover object-[center_38%]">
                 </div>
-                <div class="p-4 pt-3">
+                <div class="p-4 pt-3 pb-20">
                     <div class="flex justify-between items-end mb-4">
                         <h2 class="font-bold text-gray-800">Popular Challenge Themes</h2>
                         <span class="text-xs text-red-500 italic">24k Joined</span>
                     </div>
-                    <div id="theme-list" class="space-y-4">
+                    <div id="theme-list" class="grid grid-cols-2 gap-3">
                         <!-- JS 渲染主题卡片 -->
                     </div>
                 </div>
@@ -183,21 +183,24 @@
                     <h2 id="current-theme-title" class="flex-1 text-center font-bold text-sm">Customize Outfit</h2>
                     <div class="w-6"></div>
                 </div>
-                <div class="p-4">
-                    <div id="category-list" class="space-y-3">
+                <div class="flex flex-col flex-1 p-4">
+                    <!-- Upload your image 区域 -->
+                    <div id="upload-area" class="h-80 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl bg-white mb-4 cursor-pointer" onclick="showUploadedImage()">
+                        <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+                        <img id="uploaded-preview" src="" class="hidden w-full h-full object-contain rounded-2xl">
+                        <div id="upload-placeholder" class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                                <span class="text-2xl text-gray-400">+</span>
+                            </div>
+                            <div class="text-sm font-bold text-gray-600">Upload Your Image</div>
+                            <div class="text-[10px] text-gray-400 mt-1">Tap to select a photo</div>
+                        </div>
+                    </div>
+                    <!-- 服装选项横排 -->
+                    <div id="category-list" class="grid grid-cols-3 gap-3 mb-4">
                         <!-- 渲染类别卡片 -->
                     </div>
-                    <!-- Model 模特选择 -->
-                    <div class="mt-5 mb-5">
-                        <div class="text-xs font-bold text-gray-700 mb-2">Model</div>
-                        <div id="model-scroll-row" class="scroll-row-container"></div>
-                    </div>
-                    <!-- Pose 姿势选择 -->
-                    <div class="mb-5">
-                        <div class="text-xs font-bold text-gray-700 mb-2">Pose</div>
-                        <div id="pose-scroll-row" class="scroll-row-container"></div>
-                    </div>
-                    <button id="btn-submit" class="w-full btn-gradient py-4 mt-8 font-bold opacity-50 pointer-events-none shadow-lg">
+                    <button id="btn-submit" class="w-full btn-gradient py-4 font-bold opacity-50 pointer-events-none shadow-lg">
                         Generate AI Report
                     </button>
                 </div>
@@ -319,9 +322,10 @@
     <script>
         // --- 数据配置 ---
         const THEMES = [
-            { id: 1, title: 'Urban Minimalism', img: 'source/urban minimalism.webp', categories: ['Outerwear', 'Innerwear', 'Pants'] },
-            { id: 2, title: 'High-Performance Gaming Room', img: 'source/High-Performance Gaming Room.jpeg', categories: ['Keyboard & Mouse', 'Monitor', 'Ambient Light'] },
-            { id: 3, title: 'Early Autumn Camping', img: 'source/Early Autumn Camping.jpeg', categories: ['Tent', 'Folding Chair', 'Camping Light'] }
+            { id: 1, title: 'Minimalism', img: 'source/首页图片/极简风.png', categories: ['Outerwear', 'Innerwear', 'Pants'] },
+            { id: 2, title: 'Old Money', img: 'source/首页图片/老钱风.png', categories: ['Outerwear', 'Innerwear', 'Pants'] },
+            { id: 3, title: 'Office Chic', img: 'source/首页图片/职场通勤.png', categories: ['Outerwear', 'Innerwear', 'Pants'] },
+            { id: 4, title: 'Outdoor', img: 'source/首页图片/户外活动.png', categories: ['Outerwear', 'Innerwear', 'Pants'] }
         ];
 
         const PRODUCTS = {
@@ -439,14 +443,13 @@
             const list = document.getElementById('theme-list');
             THEMES.forEach(t => {
                 const card = document.createElement('div');
-                card.className = 'card overflow-hidden flex h-24 items-center';
+                card.className = 'card overflow-hidden flex flex-col';
                 card.innerHTML = `
-                    <img src="${t.img}" class="w-24 h-full object-cover">
-                    <div class="p-4 flex-1">
+                    <img src="${t.img}" class="w-full aspect-[4/5] object-cover">
+                    <div class="p-3 flex flex-col flex-1">
                         <div class="font-bold text-sm">${t.title}</div>
-                        <div class="text-[10px] text-gray-400">Contains ${t.categories.length} categories</div>
+                        <button class="mt-2 text-xs font-bold text-white bg-orange-500 rounded-full px-3 py-1">Challenge</button>
                     </div>
-                    <button class="mr-4 text-xs font-bold text-red-500">Challenge</button>
                 `;
                 card.onclick = () => {
                     state.currentTheme = t;
@@ -461,50 +464,49 @@
             });
         }
 
-        function renderEditor() {
-            // 渲染模特行
-            const modelRow = document.getElementById('model-scroll-row');
-            modelRow.innerHTML = '';
-            MODELS.forEach(m => {
-                const item = document.createElement('div');
-                item.className = `scroll-row-item ${state.model && state.model.id === m.id ? 'selected' : ''}`;
-                item.innerHTML = `<img src="${m.img}" alt="Model ${m.id}">`;
-                item.onclick = () => {
-                    state.model = m;
-                    renderEditor();
-                };
-                modelRow.appendChild(item);
-            });
-            // 渲染姿势行
-            const poseRow = document.getElementById('pose-scroll-row');
-            poseRow.innerHTML = '';
-            POSES.forEach(p => {
-                const item = document.createElement('div');
-                item.className = `scroll-row-item ${state.pose && state.pose.id === p.id ? 'selected' : ''}`;
-                item.innerHTML = `<img src="${p.img}" alt="Pose ${p.id}">`;
-                item.onclick = () => {
-                    state.pose = p;
-                    renderEditor();
-                };
-                poseRow.appendChild(item);
-            });
+        const MOCK_UPLOAD_IMG = 'source/上传照片.png';
 
+        function showUploadedImage() {
+            const area = document.getElementById('upload-area');
+            const preview = document.getElementById('uploaded-preview');
+            const placeholder = document.getElementById('upload-placeholder');
+            preview.src = MOCK_UPLOAD_IMG;
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            area.style.borderStyle = 'none';
+            state.uploadedImage = true;
+            if (state.currentTheme) renderEditor();
+        }
+
+        function handleImageUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('uploaded-preview');
+                    const placeholder = document.getElementById('upload-placeholder');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    state.uploadedImage = true;
+                    renderEditor();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function renderEditor() {
             const container = document.getElementById('category-list');
             container.innerHTML = '';
             state.currentTheme.categories.forEach(cat => {
                 const item = state.selections[cat];
                 const card = document.createElement('div');
-                card.className = `card p-3 flex justify-between items-center border-2 ${item ? 'border-red-400' : 'border-transparent'}`;
+                card.className = `card p-2 flex flex-col items-center text-center border-2 rounded-xl cursor-pointer ${item ? 'border-red-400' : 'border-transparent'}`;
                 card.innerHTML = `
-                    <div class="flex items-center">
-                        <div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center mr-3 overflow-hidden">
-                            ${item ? `<img src="${item.img}" class="w-full h-full object-cover">` : '<span class="text-lg">＋</span>'}
-                        </div>
-                        <div>
-                            <div class="text-xs font-bold">${cat}</div>
-                            <div class="text-[10px] text-gray-400">${item ? item.name : 'Not Selected'}</div>
-                        </div>
+                    <div class="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden mb-2">
+                        ${item ? `<img src="${item.img}" class="w-full h-full object-cover">` : '<span class="text-2xl text-gray-300">＋</span>'}
                     </div>
+                    <div class="text-[11px] font-bold text-gray-700">${cat}</div>
+                    <div class="text-[9px] text-gray-400 truncate w-full">${item ? item.name : 'Select'}</div>
                 `;
                 card.onclick = () => openPicker(cat);
                 container.appendChild(card);
@@ -512,7 +514,7 @@
 
             const isDone = Object.keys(state.selections).length === state.currentTheme.categories.length;
             const btn = document.getElementById('btn-submit');
-            btn.className = `w-full btn-gradient py-4 mt-8 font-bold shadow-lg ${isDone ? 'opacity-100' : 'opacity-50 pointer-events-none'}`;
+            btn.className = `w-full btn-gradient py-4 font-bold shadow-lg ${isDone ? 'opacity-100' : 'opacity-50 pointer-events-none'}`;
             btn.onclick = showResult;
         }
 
